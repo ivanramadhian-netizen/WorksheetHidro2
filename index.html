@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worksheet: Kenampakan Alam Perairan Darat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #f0f9ff;
+            background-image: radial-gradient(#bae6fd 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        h1, h2, h3, h4, .fredoka {
+            font-family: 'Fredoka', sans-serif;
+        }
+        
+        /* Word Search Styles */
+        .ws-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 2px;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+        .ws-cell {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            font-weight: 700;
+            background-color: #ffffff;
+            border: 2px solid #e0f2fe;
+            border-radius: 6px;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s;
+        }
+        .ws-cell:hover {
+            background-color: #bae6fd;
+        }
+        .ws-cell.selected {
+            background-color: #10b981;
+            color: white;
+            border-color: #059669;
+            transform: scale(0.92);
+        }
+
+        /* Drag & Drop Styles */
+        .draggable {
+            cursor: grab;
+            transition: transform 0.1s;
+        }
+        .draggable:active {
+            cursor: grabbing;
+            transform: scale(0.98);
+        }
+        .dropzone {
+            min-height: 120px;
+            transition: background-color 0.2s;
+        }
+        .dropzone.drag-over {
+            background-color: #dbeafe;
+            border-color: #3b82f6;
+        }
+
+        /* Matching Line Styles */
+        #match-container {
+            position: relative;
+        }
+        #lines-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .match-item {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .match-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .match-item.selected {
+            border-color: #f97316;
+            background-color: #fff7ed;
+            box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.2);
+        }
+        
+        /* Modal Styles */
+        #score-modal {
+            display: none;
+            backdrop-filter: blur(4px);
+        }
+        #score-modal.active {
+            display: flex;
+        }
+    </style>
+</head>
+<body class="text-slate-800 pb-20">
+
+    <!-- Top Navigation / Timer -->
+    <div class="sticky top-0 z-50 bg-white border-b-4 border-blue-400 shadow-md p-3 flex justify-between items-center px-4 md:px-8">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-xs border-2 border-emerald-800">
+                AL-IZHAR
+            </div>
+            <span class="font-bold text-lg hidden md:inline-block">Geografi - Perairan Darat</span>
+        </div>
+        <div class="flex items-center gap-2 bg-rose-100 text-rose-600 px-4 py-2 rounded-full border-2 border-rose-300">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span id="timer" class="font-bold text-xl fredoka tracking-wider">20:00</span>
+        </div>
+    </div>
+
+    <div class="max-w-5xl mx-auto mt-8 px-4">
+        <!-- Header Section -->
+        <div class="bg-white rounded-2xl p-6 shadow-lg border-2 border-blue-100 mb-8">
+            <h1 class="text-3xl font-bold text-center text-blue-600 mb-2 fredoka">Lembar Kerja Peserta Didik (LKPD)</h1>
+            <h2 class="text-xl text-center text-slate-500 mb-6 font-semibold">Materi: Kenampakan Alam Perairan Darat</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-bold text-slate-600 mb-1">Nama Lengkap</label>
+                    <input type="text" id="student-name" class="w-full border-2 border-slate-200 rounded-lg p-2 focus:border-blue-400 focus:outline-none" placeholder="Masukkan namamu...">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-600 mb-1">Kelas</label>
+                    <input type="text" id="student-class" class="w-full border-2 border-slate-200 rounded-lg p-2 focus:border-blue-400 focus:outline-none" placeholder="Contoh: XA">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-600 mb-1">Tanggal</label>
+                    <input type="date" id="student-date" class="w-full border-2 border-slate-200 rounded-lg p-2 focus:border-blue-400 focus:outline-none">
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 1: Word Search -->
+        <div class="bg-white rounded-2xl p-6 shadow-lg border-2 border-emerald-100 mb-8">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="bg-emerald-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-xl">1</div>
+                <h3 class="text-2xl font-bold text-emerald-600 fredoka">Mencari Kata</h3>
+            </div>
+            <p class="mb-4 text-slate-600">Temukan dan klik huruf-huruf untuk membentuk <strong>10 kata</strong>! Hati-hati, kata-kata ini bisa tersembunyi secara <strong>horizontal, vertikal, maupun diagonal (menyilang)</strong>.</p>
+            <div class="flex flex-wrap gap-2 mb-6 font-bold text-emerald-800 text-sm bg-emerald-50 p-3 rounded-lg border border-emerald-200 justify-center">
+                <span>SUNGAI</span> • <span>DANAU</span> • <span>RAWA</span> • <span>AIRTANAH</span> • <span>GLETSER</span> • <span>BAKAU</span> • <span>KERAMBA</span> • <span>IRIGASI</span> • <span>PLTA</span> • <span>SALJU</span>
+            </div>
+            
+            <div id="word-search-container" class="ws-grid bg-slate-50 p-3 rounded-xl border-2 border-slate-200 shadow-inner">
+                <!-- Grid generated by JS -->
+            </div>
+        </div>
+
+        <!-- Section 2: Drag and Drop -->
+        <div class="bg-white rounded-2xl p-6 shadow-lg border-2 border-purple-100 mb-8">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="bg-purple-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-xl">2</div>
+                <h3 class="text-2xl font-bold text-purple-600 fredoka">Tarik dan Lepas (Drag & Drop)</h3>
+            </div>
+            <p class="mb-4 text-slate-600">Tarik kotak pengertian di bawah ini dan lepaskan ke dalam kotak jenis kenampakan alam perairan yang tepat.</p>
+            
+            <div class="bg-gray-100 p-4 rounded-xl border-2 border-dashed border-gray-300 mb-6 flex flex-wrap gap-3 justify-center" id="draggables-pool" ondragover="allowDrop(event)" ondrop="dropToPool(event)">
+                <!-- Semua kotak drag dibuat seragam (warna slate/abu-abu) -->
+                <div id="drag-1" class="draggable bg-white px-4 py-3 rounded-lg shadow-md border-l-4 border-slate-500 text-slate-700 text-sm font-bold w-48 text-center" draggable="true" ondragstart="drag(event)" data-answer="danau">
+                    Perairan luas di daratan seperti kolam raksasa
+                </div>
+                <div id="drag-2" class="draggable bg-white px-4 py-3 rounded-lg shadow-md border-l-4 border-slate-500 text-slate-700 text-sm font-bold w-48 text-center" draggable="true" ondragstart="drag(event)" data-answer="gletser">
+                    Hamparan es besar dari endapan salju yang memadat
+                </div>
+                <div id="drag-3" class="draggable bg-white px-4 py-3 rounded-lg shadow-md border-l-4 border-slate-500 text-slate-700 text-sm font-bold w-48 text-center" draggable="true" ondragstart="drag(event)" data-answer="airtanah">
+                    Air yang meresap di dalam pori-pori tanah dan batuan
+                </div>
+                <div id="drag-4" class="draggable bg-white px-4 py-3 rounded-lg shadow-md border-l-4 border-slate-500 text-slate-700 text-sm font-bold w-48 text-center" draggable="true" ondragstart="drag(event)" data-answer="rawa">
+                    Daratan basah karena selalu digenangi oleh air
+                </div>
+                <div id="drag-5" class="draggable bg-white px-4 py-3 rounded-lg shadow-md border-l-4 border-slate-500 text-slate-700 text-sm font-bold w-48 text-center" draggable="true" ondragstart="drag(event)" data-answer="sungai">
+                    Aliran air yang memanjang dan mengalir terus-menerus
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div class="dropzone p-4 bg-blue-50 rounded-xl border-2 border-blue-200 flex flex-col items-center gap-2" data-target="danau" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)" ondrop="dropTarget(event)">
+                    <h4 class="font-bold text-blue-700 w-full text-center pb-2 border-b-2 border-blue-200 mb-2">Danau</h4>
+                </div>
+                <div class="dropzone p-4 bg-emerald-50 rounded-xl border-2 border-emerald-200 flex flex-col items-center gap-2" data-target="rawa" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)" ondrop="dropTarget(event)">
+                    <h4 class="font-bold text-emerald-700 w-full text-center pb-2 border-b-2 border-emerald-200 mb-2">Rawa</h4>
+                </div>
+                <div class="dropzone p-4 bg-amber-50 rounded-xl border-2 border-amber-200 flex flex-col items-center gap-2" data-target="airtanah" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)" ondrop="dropTarget(event)">
+                    <h4 class="font-bold text-amber-700 w-full text-center pb-2 border-b-2 border-amber-200 mb-2">Air Tanah</h4>
+                </div>
+                <div class="dropzone p-4 bg-rose-50 rounded-xl border-2 border-rose-200 flex flex-col items-center gap-2 md:col-start-1 md:col-end-2 md:ml-auto w-full" data-target="gletser" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)" ondrop="dropTarget(event)">
+                    <h4 class="font-bold text-rose-700 w-full text-center pb-2 border-b-2 border-rose-200 mb-2">Gletser</h4>
+                </div>
+                <div class="dropzone p-4 bg-cyan-50 rounded-xl border-2 border-cyan-200 flex flex-col items-center gap-2 md:col-start-2 md:col-end-4 md:mr-auto w-full md:w-1/2" data-target="sungai" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)" ondrop="dropTarget(event)">
+                    <h4 class="font-bold text-cyan-700 w-full text-center pb-2 border-b-2 border-cyan-200 mb-2">Sungai</h4>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Matching (Tarik Garis) -->
+        <div class="bg-white rounded-2xl p-6 shadow-lg border-2 border-orange-100 mb-8">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="bg-orange-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-xl">3</div>
+                <h3 class="text-2xl font-bold text-orange-600 fredoka">Menghubungkan Pasangan</h3>
+            </div>
+            <p class="mb-6 text-slate-600">Klik satu kotak di kolom kiri (Fakta/Pemanfaatan), lalu klik kotak pasangannya di kolom kanan untuk membuat garis penghubung.</p>
+            
+            <div id="match-container" class="flex justify-between items-stretch relative py-4 gap-4">
+                <svg id="lines-svg"></svg>
+                
+                <!-- Kiri: Fakta -->
+                <div class="flex flex-col gap-4 w-[45%] z-20">
+                    <div class="match-item match-left bg-white border-2 border-slate-300 rounded-xl p-3 text-sm text-center font-bold shadow-sm" data-id="L1" data-match="R1" onclick="handleMatchClick(this, 'left')">Pembudidayaan ikan di keramba</div>
+                    <div class="match-item match-left bg-white border-2 border-slate-300 rounded-xl p-3 text-sm text-center font-bold shadow-sm" data-id="L2" data-match="R2" onclick="handleMatchClick(this, 'left')">Habitat utama tumbuhan bakau</div>
+                    <div class="match-item match-left bg-white border-2 border-slate-300 rounded-xl p-3 text-sm text-center font-bold shadow-sm" data-id="L3" data-match="R3" onclick="handleMatchClick(this, 'left')">Memenuhi kebutuhan irigasi pertanian</div>
+                    <div class="match-item match-left bg-white border-2 border-slate-300 rounded-xl p-3 text-sm text-center font-bold shadow-sm" data-id="L4" data-match="R4" onclick="handleMatchClick(this, 'left')">Endapan salju yang memadat puluhan tahun</div>
+                    <div class="match-item match-left bg-white border-2 border-slate-300 rounded-xl p-3 text-sm text-center font-bold shadow-sm" data-id="L5" data-match="R5" onclick="handleMatchClick(this, 'left')">Transportasi air antar pulau atau benua</div>
+                    <div class="match-item match-left bg-white border-2 border-slate-300 rounded-xl p-3 text-sm text-center font-bold shadow-sm" data-id="L6" data-match="R6" onclick="handleMatchClick(this, 'left')">Berfungsi sebagai penghambat abrasi</div>
+                    <div class="match-item match-left bg-white border-2 border-slate-300 rounded-xl p-3 text-sm text-center font-bold shadow-sm" data-id="L7" data-match="R7" onclick="handleMatchClick(this, 'left')">Perairan luas seperti kolam raksasa di daratan</div>
+                    <div class="match-item match-left bg-white border-2 border-slate-300 rounded-xl p-3 text-sm text-center font-bold shadow-sm" data-id="L8" data-match="R8" onclick="handleMatchClick(this, 'left')">Kebutuhan sumber air untuk industri</div>
+                    <div class="match-item match-left bg-white border-2 border-slate-300 rounded-xl p-3 text-sm text-center font-bold shadow-sm" data-id="L9" data-match="R9" onclick="handleMatchClick(this, 'left')">Sumber Pembangkit Listrik Tenaga Air (PLTA)</div>
+                    <div class="match-item match-left bg-white border-2 border-slate-300 rounded-xl p-3 text-sm text-center font-bold shadow-sm" data-id="L10" data-match="R10" onclick="handleMatchClick(this, 'left')">Dimanfaatkan untuk pariwisata dan olahraga salju</div>
+                </div>
+
+                <!-- Kanan: Pasangannya -->
+                <div class="flex flex-col gap-4 w-[45%] z-20">
+                    <div class="match-item match-right bg-orange-50 border-2 border-orange-200 rounded-xl p-3 text-sm text-center font-bold shadow-sm" data-id="R7" onclick="handleMatchClick(this, 'right')">Pengertian Danau</div>
+                    <div class="match-item match-right bg-orange-50 border-2 border-orange-200 rounded-xl p-3 text-sm text-center font-bold shadow-sm" data-id="R3" onclick="handleMatchClick(this, 'right')">Pemanfaatan Air Tanah</div>
+                    <div class="match-item match-right bg-orange-50 border-2 border-orange-200 rounded-xl p-3 text-sm text-center font-bold shadow-sm" data-id="R10" onclick="handleMatchClick(this, 'right')">Rekreasi Gletser</div>
+                    <div class="match-item match-right bg-orange-50 border-2 border-orange-200 rounded-xl p-3 text-sm text-center font-bold shadow-sm" data-id="R1" onclick="handleMatchClick(this, 'right')">Pemanfaatan Danau</div>
+                    <div class="match-item match-right bg-orange-50 border-2 border-orange-200 rounded-xl p-3 text-sm text-center font-bold shadow-sm" data-id="R6" onclick="handleMatchClick(this, 'right')">Fungsi Utama Rawa</div>
+                    <div class="match-item match-right bg-orange-50 border-2 border-orange-200 rounded-xl p-3 text-sm text-center font-bold shadow-sm" data-id="R4" onclick="handleMatchClick(this, 'right')">Proses Terbentuk Gletser</div>
+                    <div class="match-item match-right bg-orange-50 border-2 border-orange-200 rounded-xl p-3 text-sm text-center font-bold shadow-sm" data-id="R9" onclick="handleMatchClick(this, 'right')">Energi dari Gletser</div>
+                    <div class="match-item match-right bg-orange-50 border-2 border-orange-200 rounded-xl p-3 text-sm text-center font-bold shadow-sm" data-id="R2" onclick="handleMatchClick(this, 'right')">Ciri Ekosistem Rawa</div>
+                    <div class="match-item match-right bg-orange-50 border-2 border-orange-200 rounded-xl p-3 text-sm text-center font-bold shadow-sm" data-id="R5" onclick="handleMatchClick(this, 'right')">Fungsi Transportasi Laut/Sungai</div>
+                    <div class="match-item match-right bg-orange-50 border-2 border-orange-200 rounded-xl p-3 text-sm text-center font-bold shadow-sm" data-id="R8" onclick="handleMatchClick(this, 'right')">Kegunaan Air Tanah Industri</div>
+                </div>
+            </div>
+            <button onclick="clearLines()" class="mt-4 text-sm text-red-500 hover:text-red-700 underline font-semibold transition">Hapus semua garis</button>
+        </div>
+
+        <!-- Section 4: Isian Singkat -->
+        <div class="bg-white rounded-2xl p-6 shadow-lg border-2 border-sky-100 mb-8">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="bg-sky-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-xl">4</div>
+                <h3 class="text-2xl font-bold text-sky-600 fredoka">Isian Singkat</h3>
+            </div>
+            <p class="mb-6 text-slate-600">Lengkapi kalimat di bawah ini dengan **satu kata** yang paling tepat berdasarkan materi yang telah dipelajari!</p>
+            
+            <div class="space-y-6">
+                <!-- Pertanyaan 1 -->
+                <div class="flex flex-wrap items-center gap-2 text-lg">
+                    <span>1. Selain sebagai sumber cadangan air, danau juga dapat dimanfaatkan untuk pencegahan</span>
+                    <input type="text" id="isian-1" class="border-b-2 border-slate-400 bg-slate-50 px-2 py-1 w-32 focus:outline-none focus:border-sky-500 font-bold text-sky-700 text-center" autocomplete="off">
+                    <span>.</span>
+                </div>
+                
+                <!-- Pertanyaan 2 -->
+                <div class="flex flex-wrap items-center gap-2 text-lg leading-relaxed">
+                    <span>2. Tumbuhan bakau yang hidup di ekosistem rawa sangat penting karena berfungsi sebagai penghambat</span>
+                    <input type="text" id="isian-2" class="border-b-2 border-slate-400 bg-slate-50 px-2 py-1 w-32 focus:outline-none focus:border-sky-500 font-bold text-sky-700 text-center" autocomplete="off">
+                    <span>.</span>
+                </div>
+
+                <!-- Pertanyaan 3 -->
+                <div class="flex flex-wrap items-center gap-2 text-lg leading-relaxed">
+                    <span>3. Air tanah dapat meresap dan tersimpan di celah-celah batuan, pasir, maupun di dalam</span>
+                    <input type="text" id="isian-3" class="border-b-2 border-slate-400 bg-slate-50 px-2 py-1 w-36 focus:outline-none focus:border-sky-500 font-bold text-sky-700 text-center" autocomplete="off">
+                    <span>tanah.</span>
+                </div>
+
+                <!-- Pertanyaan 4 -->
+                <div class="flex flex-wrap items-center gap-2 text-lg leading-relaxed">
+                    <span>4. Hamparan es gletser yang sangat besar memiliki peran penting bagi bumi, salah satunya sebagai pengatur</span>
+                    <input type="text" id="isian-4" class="border-b-2 border-slate-400 bg-slate-50 px-2 py-1 w-32 focus:outline-none focus:border-sky-500 font-bold text-sky-700 text-center" autocomplete="off">
+                    <span>global.</span>
+                </div>
+
+                <!-- Pertanyaan 5 -->
+                <div class="flex flex-wrap items-center gap-2 text-lg leading-relaxed">
+                    <span>5. Gletser yang mencair tidak hanya menjadi sumber aliran sungai, tetapi juga menjadi cadangan utama air</span>
+                    <input type="text" id="isian-5" class="border-b-2 border-slate-400 bg-slate-50 px-2 py-1 w-32 focus:outline-none focus:border-sky-500 font-bold text-sky-700 text-center" autocomplete="off">
+                    <span>di bumi.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="text-center mb-12">
+            <button onclick="calculateScore()" class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-2xl font-bold py-4 px-12 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition transform fredoka">
+                Periksa Jawaban
+            </button>
+        </div>
+    </div>
+
+    <!-- Result Modal -->
+    <div id="score-modal" class="fixed inset-0 z-[100] bg-slate-900/60 items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative text-center transform scale-95 transition-transform duration-300" id="modal-content">
+            <h2 class="text-3xl font-bold text-slate-800 mb-2 fredoka">Worksheet Selesai!</h2>
+            <p class="text-slate-500 mb-6 font-semibold text-lg" id="modal-student-name">Nama Siswa</p>
+            
+            <div class="relative w-40 h-40 mx-auto mb-6">
+                <svg class="w-full h-full" viewBox="0 0 36 36">
+                    <path class="text-slate-100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"/>
+                    <path id="score-circle" class="text-blue-500 transition-all duration-1000 ease-out" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <span id="final-score" class="text-5xl font-black text-slate-800 fredoka">0</span>
+                </div>
+            </div>
+
+            <div class="space-y-2 mb-8 text-left bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <p class="flex justify-between font-bold text-slate-600"><span class="text-emerald-600">Mencari Kata:</span> <span id="score-1">0/20</span></p>
+                <p class="flex justify-between font-bold text-slate-600"><span class="text-purple-600">Drag & Drop:</span> <span id="score-2">0/20</span></p>
+                <p class="flex justify-between font-bold text-slate-600"><span class="text-orange-600">Tarik Garis:</span> <span id="score-3">0/40</span></p>
+                <p class="flex justify-between font-bold text-slate-600"><span class="text-sky-600">Isian Singkat:</span> <span id="score-4">0/20</span></p>
+            </div>
+
+            <button onclick="closeModal()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 rounded-xl transition">
+                Tutup & Lihat Jawaban
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. TIMER LOGIC ---
+        let totalSeconds = 20 * 60; // 20 minutes
+        let timerInterval;
+
+        function startTimer() {
+            const timerElement = document.getElementById('timer');
+            timerInterval = setInterval(() => {
+                totalSeconds--;
+                let minutes = Math.floor(totalSeconds / 60);
+                let seconds = totalSeconds % 60;
+                
+                timerElement.innerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                if (totalSeconds <= 60) {
+                    timerElement.parentElement.classList.replace('bg-rose-100', 'bg-red-500');
+                    timerElement.parentElement.classList.replace('text-rose-600', 'text-white');
+                    timerElement.parentElement.classList.add('animate-pulse');
+                }
+
+                if (totalSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    alert("Waktu habis! Jawaban otomatis diperiksa.");
+                    calculateScore();
+                }
+            }, 1000);
+        }
+        startTimer();
+
+        // --- 2. WORD SEARCH LOGIC (12x12 Grid dengan Diagonal) ---
+        const wsGrid = [
+            ['S','U','N','G','A','I','Q','W','R','X','Y','P'],
+            ['K','D','Z','X','C','V','B','N','A','M','L','Q'],
+            ['I','W','A','P','O','I','U','Y','W','T','R','E'],
+            ['J','R','H','N','G','F','D','S','A','Z','X','C'],
+            ['A','M','I','L','A','P','O','B','I','U','Y','T'],
+            ['I','Q','W','G','E','U','M','R','T','Y','U','B'],
+            ['R','A','S','D','A','A','F','G','H','J','K','A'],
+            ['T','Z','X','C','R','S','V','B','N','M','Q','K'],
+            ['A','P','O','E','I','U','I','Y','T','R','E','A'],
+            ['N','L','K','J','H','G','F','D','S','A','Z','U'],
+            ['A','M','N','S','A','L','J','U','B','V','C','X'],
+            ['H','P','O','I','U','G','L','E','T','S','E','R']
+        ];
+        
+        // Target koordinat tepat untuk 10 kata (Horizontal, Vertical, Diagonal)
+        const targetWords = [
+            ["0,0","0,1","0,2","0,3","0,4","0,5"], // SUNGAI (Horizontal - Baris 0)
+            ["1,1","2,2","3,3","4,4","5,5"], // DANAU (Diagonal Turun Kanan)
+            ["0,8","1,8","2,8","3,8"], // RAWA (Vertical - Kolom 8)
+            ["0,11","1,10","2,9","3,8"], // PLTA (Diagonal Turun Kiri)
+            ["4,0","5,0","6,0","7,0","8,0","9,0","10,0","11,0"], // AIRTANAH (Vertical - Kolom 0)
+            ["2,0","3,1","4,2","5,3","6,4","7,5","8,6"], // IRIGASI (Diagonal Turun Kanan)
+            ["10,3","10,4","10,5","10,6","10,7"], // SALJU (Horizontal - Baris 10)
+            ["11,5","11,6","11,7","11,8","11,9","11,10","11,11"], // GLETSER (Horizontal - Baris 11)
+            ["5,11","6,11","7,11","8,11","9,11"], // BAKAU (Vertical - Kolom 11)
+            ["9,2","8,3","7,4","6,5","5,6","4,7","3,8"] // KERAMBA (Diagonal Naik Kanan)
+        ];
+
+        let allValidCoordsSet = new Set();
+        targetWords.forEach(wordArr => wordArr.forEach(c => allValidCoordsSet.add(c)));
+
+        const wsContainer = document.getElementById('word-search-container');
+        for (let r = 0; r < wsGrid.length; r++) {
+            for (let c = 0; c < wsGrid[r].length; c++) {
+                let cell = document.createElement('div');
+                cell.className = 'ws-cell';
+                cell.innerText = wsGrid[r][c];
+                cell.dataset.r = r;
+                cell.dataset.c = c;
+                cell.onclick = function() {
+                    this.classList.toggle('selected');
+                };
+                wsContainer.appendChild(cell);
+            }
+        }
+
+        // --- 3. DRAG & DROP LOGIC ---
+        function drag(ev) {
+            ev.dataTransfer.setData("text", ev.target.id);
+            ev.target.style.opacity = '0.5';
+        }
+        document.addEventListener("dragend", (ev) => {
+            if(ev.target.className.includes("draggable")) ev.target.style.opacity = '1';
+        });
+
+        function allowDrop(ev) {
+            ev.preventDefault();
+        }
+        function dragEnter(ev) {
+            ev.currentTarget.classList.add('drag-over');
+        }
+        function dragLeave(ev) {
+            ev.currentTarget.classList.remove('drag-over');
+        }
+        function dropTarget(ev) {
+            ev.preventDefault();
+            ev.currentTarget.classList.remove('drag-over');
+            var data = ev.dataTransfer.getData("text");
+            var draggedEl = document.getElementById(data);
+            if (draggedEl) ev.currentTarget.appendChild(draggedEl);
+        }
+        function dropToPool(ev) {
+            ev.preventDefault();
+            var data = ev.dataTransfer.getData("text");
+            var draggedEl = document.getElementById(data);
+            if (draggedEl) document.getElementById('draggables-pool').appendChild(draggedEl);
+        }
+
+        // --- 4. MATCHING LOGIC ---
+        let selectedLeft = null;
+        let connections = [];
+
+        function handleMatchClick(el, side) {
+            if (side === 'left') {
+                if (selectedLeft) selectedLeft.classList.remove('selected');
+                selectedLeft = el;
+                el.classList.add('selected');
+            } else if (side === 'right' && selectedLeft) {
+                removeConnectionByNode(selectedLeft.dataset.id);
+                removeConnectionByNode(el.dataset.id);
+
+                const svg = document.getElementById('lines-svg');
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('stroke', '#f97316'); // orange-500
+                line.setAttribute('stroke-width', '4');
+                line.setAttribute('stroke-linecap', 'round');
+                svg.appendChild(line);
+
+                connections.push({
+                    leftId: selectedLeft.dataset.id,
+                    rightId: el.dataset.id,
+                    lineEl: line,
+                    leftEl: selectedLeft,
+                    rightEl: el
+                });
+
+                selectedLeft.classList.remove('selected');
+                selectedLeft = null;
+                drawLines();
+            }
+        }
+
+        function removeConnectionByNode(nodeId) {
+            connections = connections.filter(conn => {
+                if (conn.leftId === nodeId || conn.rightId === nodeId) {
+                    conn.lineEl.remove();
+                    return false;
+                }
+                return true;
+            });
+        }
+
+        function clearLines() {
+            connections.forEach(c => c.lineEl.remove());
+            connections = [];
+            if(selectedLeft) { selectedLeft.classList.remove('selected'); selectedLeft=null;}
+        }
+
+        function drawLines() {
+            const containerRect = document.getElementById('match-container').getBoundingClientRect();
+            connections.forEach(conn => {
+                const lRect = conn.leftEl.getBoundingClientRect();
+                const rRect = conn.rightEl.getBoundingClientRect();
+                
+                const x1 = lRect.right - containerRect.left;
+                const y1 = (lRect.top + lRect.height / 2) - containerRect.top;
+                const x2 = rRect.left - containerRect.left;
+                const y2 = (rRect.top + rRect.height / 2) - containerRect.top;
+
+                conn.lineEl.setAttribute('x1', x1);
+                conn.lineEl.setAttribute('y1', y1);
+                conn.lineEl.setAttribute('x2', x2);
+                conn.lineEl.setAttribute('y2', y2);
+            });
+        }
+        window.addEventListener('resize', drawLines);
+        window.addEventListener('scroll', drawLines);
+
+        // --- 5. SCORING LOGIC ---
+        function calculateScore() {
+            clearInterval(timerInterval);
+
+            // 1. Word Search Score (Max 20)
+            let wordsFound = 0;
+            let wrongClicks = 0;
+            let selectedCells = document.querySelectorAll('.ws-cell.selected');
+            
+            targetWords.forEach(wordCoords => {
+                let isWordFound = wordCoords.every(coord => {
+                    let [r, c] = coord.split(',');
+                    return document.querySelector(`.ws-cell[data-r="${r}"][data-c="${c}"]`).classList.contains('selected');
+                });
+                if(isWordFound) wordsFound++;
+            });
+
+            selectedCells.forEach(cell => {
+                let coord = `${cell.dataset.r},${cell.dataset.c}`;
+                if (!allValidCoordsSet.has(coord)) wrongClicks++;
+            });
+
+            let wsRawScore = (wordsFound * 2) - (wrongClicks * 0.5);
+            if(wsRawScore < 0) wsRawScore = 0;
+            let scoreWs = Math.round(wsRawScore);
+            if(scoreWs > 20) scoreWs = 20;
+
+            // 2. Drag & Drop Score (Max 20)
+            let ddCorrect = 0;
+            const dropzones = document.querySelectorAll('.dropzone');
+            dropzones.forEach(zone => {
+                const target = zone.dataset.target;
+                const items = zone.querySelectorAll('.draggable');
+                items.forEach(item => {
+                    if (item.dataset.answer === target) ddCorrect++;
+                });
+            });
+            let scoreDd = ddCorrect * 4;
+
+            // 3. Matching Score (Max 40)
+            let matchCorrect = 0;
+            connections.forEach(conn => {
+                if (conn.leftEl.dataset.match === conn.rightId) {
+                    matchCorrect++;
+                }
+            });
+            let scoreMatch = matchCorrect * 4;
+
+            // 4. Fill in the blanks (Max 20)
+            let fillCorrect = 0;
+            const ans1 = document.getElementById('isian-1').value.trim().toLowerCase();
+            const ans2 = document.getElementById('isian-2').value.trim().toLowerCase();
+            const ans3 = document.getElementById('isian-3').value.trim().toLowerCase();
+            const ans4 = document.getElementById('isian-4').value.trim().toLowerCase();
+            const ans5 = document.getElementById('isian-5').value.trim().toLowerCase();
+
+            if (ans1 === 'banjir') fillCorrect++;
+            if (ans2 === 'abrasi') fillCorrect++;
+            if (ans3 === 'pori-pori' || ans3 === 'pori pori' || ans3 === 'pori') fillCorrect++;
+            if (ans4 === 'iklim') fillCorrect++;
+            if (ans5 === 'tawar') fillCorrect++;
+            
+            let scoreFill = fillCorrect * 4;
+
+            // TOTAL CALCULATION (Total 100)
+            let finalScore = scoreWs + scoreDd + scoreMatch + scoreFill;
+
+            // Show Modal Data
+            let classInfo = document.getElementById('student-class').value || "";
+            let name = document.getElementById('student-name').value || "Siswa Tanpa Nama";
+            document.getElementById('modal-student-name').innerText = classInfo ? `${name} - ${classInfo}` : name;
+            
+            document.getElementById('score-1').innerText = `${scoreWs} / 20`;
+            document.getElementById('score-2').innerText = `${scoreDd} / 20`;
+            document.getElementById('score-3').innerText = `${scoreMatch} / 40`;
+            document.getElementById('score-4').innerText = `${scoreFill} / 20`;
+            
+            document.getElementById('final-score').innerText = finalScore;
+            
+            // Animate Circle
+            let circle = document.getElementById('score-circle');
+            circle.setAttribute('stroke-dasharray', `0, 100`);
+            setTimeout(() => {
+                circle.setAttribute('stroke-dasharray', `${finalScore}, 100`);
+            }, 100);
+
+            if(finalScore < 60) circle.classList.replace('text-blue-500', 'text-red-500');
+            else if(finalScore < 85) circle.classList.replace('text-blue-500', 'text-amber-500');
+            else circle.classList.replace('text-blue-500', 'text-emerald-500');
+
+            const modal = document.getElementById('score-modal');
+            modal.classList.add('active');
+            setTimeout(() => {
+                document.getElementById('modal-content').classList.remove('scale-95');
+                document.getElementById('modal-content').classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeModal() {
+            document.getElementById('score-modal').classList.remove('active');
+            document.getElementById('modal-content').classList.remove('scale-100');
+            document.getElementById('modal-content').classList.add('scale-95');
+        }
+    </script>
+</body>
+</html>
